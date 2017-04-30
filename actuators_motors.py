@@ -56,6 +56,8 @@ class SERVO_9g:
         self._GPIO = GPIO
         self._pin_signal = pin_signal
         self._name = name
+        print "setup pin_step", pin_signal, " as OUT"
+        GPIO.setup(pin_signal, self._GPIO.OUT)
         self._p = GPIO.PWM(self._pin_signal, 50)  # Pin X com 50Hz (20ms)
 
     def cleanup_gpio_pins(self):
