@@ -12,7 +12,7 @@ GPIO.setmode(GPIO.BCM)
 motor_left = DRV8825(GPIO, STEPPER_42BYGHW811(stepper_type=co.MOTOR_FULL_STEPS), pin_step=2, pin_dir=3, name='Motor Esquerdo')
 motor_right = DRV8825(GPIO, STEPPER_42BYGHW811(stepper_type=co.MOTOR_HALF_STEPS), pin_step=4, pin_dir=17, name='Motor Direito')
 
-servo_farol = SERVO_9g(GPIO, 27)
+servo_farol = SERVO_9g(GPIO, 27, name='Servo para o Farol')
 servo_farol.start(0)
 
 
