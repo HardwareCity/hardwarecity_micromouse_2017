@@ -51,5 +51,43 @@ class STEPPER_42BYGHW811:
             step = -1
 
 
+class SERVO_9g:
+    def __init__(self, GPIO, pin_signal, name=''):
+        self._GPIO = GPIO
+        self._pin_signal = pin_signal
+        self._name = name
+        self._p = GPIO.PWM(self._pin_signal, 50)  # Pin X com 50Hz (20ms)
 
+    def cleanup_gpio_pins(self):
+        for pin in [self._pin_signal]:
+            print "cleaning pin", pin, "from '"+self._name+"'."
+            self._GPIO.cleanup(pin)
 
+    def start(self, degrees=0):
+        if degrees < -90:
+            degrees = -90
+        if degrees > 90:
+            degrees = 90
+        # dc = 0.5 / 20.0 * 100.0  # 2.5 turn towards 0 degree [-90]
+        # dc = 1.5 / 20.0 * 100.0  # 7.5 turn towards 90 degree [0]
+        # dc = 2.5 / 20.0 * 100.0  # 12.5 turn towards 180 degree [90]
+        # User insere entre [-90 e 90], mas servo_farol funciona entre [0 e 180]
+        degrees += 90
+        dc = (0.5 + ((degrees*2) / 180)) / 20.0 * 100.0
+        self._p.start(dc)
+
+    def change_angle(self, degrees):
+        if degrees < -90:
+            degrees = -90
+        if degrees > 90:
+            degrees = 90
+        # dc = 0.5 / 20.0 * 100.0  # 2.5 turn towards 0 degree [-90]
+        # dc = 1.5 / 20.0 * 100.0  # 7.5 turn towards 90 degree [0]
+        # dc = 2.5 / 20.0 * 100.0  # 12.5 turn towards 180 degree [90]
+        # User insere entre [-90 e 90], mas servo_farol funciona entre [0 e 180]
+        degrees += 90
+        dc = (0.5 + ((degrees*2) / 180)) / 20.0 * 100.0
+        self._p.ChangeDutyCycle(dc)
+
+    def stop(self):
+        self._p.stop()

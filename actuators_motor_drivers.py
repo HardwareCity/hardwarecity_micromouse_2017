@@ -15,8 +15,8 @@ class DRV8825:
         GPIO.setup(pin_dir, self._GPIO.OUT)
 
     def cleanup_gpio_pins(self):
-        for pin in (self._pin_step, self._pin_dir):
-            print "cleaning pin", pin, "from '", self._name, "'."
+        for pin in [self._pin_step, self._pin_dir]:
+            print "cleaning pin", pin, "from '"+self._name+"'."
             self._GPIO.cleanup(pin)
 
     def move_stepps(self, direction_front, stepps):
