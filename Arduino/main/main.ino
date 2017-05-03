@@ -1,15 +1,13 @@
 
-#define PIN_START 2 // A1
-#define PIN_STOP 3 // A0
-
-#define OFF 0
-#define ON 1
-
+// States
+byte state = 0;
 #define STATE_WAITTING_TO_START 0
 #define STATE_ALL_DONE 10
 #define STATE_ABORTED 11
 
-unsigned int state = 0;
+// Interruptores
+#define PIN_START 2 // A1
+#define PIN_STOP 3 // A0
 
 // DRIVER: Motor
 // wired connections
@@ -29,7 +27,7 @@ byte m_left_s, m_right_s;             //[0, 255] used by the driver
 int m_left_speed = 0, m_right_speed = 0;  //[-100%, +100%] used by the decision maker
 
 //DRIVER: Sharp IR Sensor GP1U5
-#define PIN_IR_LED1   2
+// #define PIN_IR_LED1   2
 #define PIN_IR_IN_1   A0
 #define PIN_IR_IN_2   A1
 #define IR_IN_MIN   85
@@ -48,6 +46,11 @@ unsigned long currentMillis = 0;
 #define MR_MIN 0
 #define M_HARD_STOP 101  //Hard Stop =101%; normal speed = [-100%, +100%]; 
 void motor_update(){
+  Serial.println("motor_update()");
+  Serial.print("m_left_speed=");
+  Serial.println(m_left_speed);
+  Serial.print("m_right_speed=");
+  Serial.println(m_right_speed);
   //Left Motor
   //convert speed values [-100, 100](%) to [0, 255]. MOTOR_MIN is > 0
   switch (m_left_speed)
@@ -68,10 +71,10 @@ void motor_update(){
     //Left motor
     if(m_left_speed >0){       //Forward
       digitalWrite( MOTOR_A_DIR, HIGH );
-      digitalWrite( MOTOR_A_PWM, MOTOR_MAX-m_left_s );
+      analogWrite( MOTOR_A_PWM, MOTOR_MAX-m_left_s );
     }else{                      //Backward
       digitalWrite( MOTOR_A_DIR, LOW );
-      digitalWrite( MOTOR_A_PWM, MOTOR_MAX-m_left_s );
+      analogWrite( MOTOR_A_PWM, MOTOR_MAX-m_left_s );
     }
   }//SWITCH END
   
@@ -106,7 +109,7 @@ void motor_update(){
 // sensors_read()
 int sensorIR_1, sensorIR_2;   //[0, 255]
 void sensors_read(){
- int aux;
+  int aux;
   aux = analogRead(PIN_IR_IN_1)/4-IR_IN_MIN;       // 0-1023 (in theory)
   if (aux < 0) aux = 0;
   sensorIR_1 = map(aux, 0, IR_IN_MAX, 0, 100);      //Normalized [0, 100%]
@@ -127,7 +130,7 @@ void setup() {
   pinMode(PIN_START, INPUT_PULLUP);
   pinMode(PIN_STOP, INPUT_PULLUP);
   // Interrupções
-  attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, CHANGE); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
+  attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, FALLING); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
 
   state = STATE_WAITTING_TO_START;
 
@@ -154,6 +157,8 @@ void int_stop_pressed(){
 
 void kill(){
   //Motor Hard STOP
+  digitalWrite( MOTOR_A_DIR, HIGH );
+  digitalWrite( MOTOR_A_PWM, HIGH );
   digitalWrite( MOTOR_B_DIR, HIGH );
   digitalWrite( MOTOR_B_PWM, HIGH );
   //Sensor stop
@@ -165,7 +170,7 @@ void loop() {
   Serial.println(digitalRead(PIN_START));
   state = STATE_WAITTING_TO_START;
   
-  while(digitalRead(PIN_START) == ON){}
+  while(digitalRead(PIN_START) == HIGH){}
   Serial.print("PIN_START pressed\n");
   
 
