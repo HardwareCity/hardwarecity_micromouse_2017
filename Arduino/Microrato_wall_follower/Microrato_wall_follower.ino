@@ -1,16 +1,3 @@
-
-#define PIN_START 2 // A1
-#define PIN_STOP 3 // A0
-
-#define OFF 0
-#define ON 1
-
-#define STATE_WAITTING_TO_START 0
-#define STATE_ALL_DONE 10
-#define STATE_ABORTED 11
-
-unsigned int state = 0;
-
 // DRIVER: Motor
 // wired connections
 #define HG7881_A_IA 13 // D10 --> Motor B Input A --> MOTOR B +
@@ -39,6 +26,24 @@ int m_left_speed = 0, m_right_speed = 0;  //[-100%, +100%] used by the decision 
 const unsigned long control_interval = 100; //ms
 unsigned long previousMillis = 0;        // will store last time LED was updated
 unsigned long currentMillis = 0;
+
+void setup() {
+  //COM Setup
+  Serial.begin( 230400 );
+  //Sharp IR Sensor GP1U5: Fire frequency for IR Led (37KHz)
+  //tone(PIN_IR_LED1, 37000);
+  
+  //MOTOR Setup
+  pinMode( MOTOR_A_DIR, OUTPUT );
+  pinMode( MOTOR_A_PWM, OUTPUT );
+  digitalWrite( MOTOR_A_DIR, LOW );
+  digitalWrite( MOTOR_A_PWM, LOW );
+
+  pinMode( MOTOR_B_DIR, OUTPUT );
+  pinMode( MOTOR_B_PWM, OUTPUT );
+  digitalWrite( MOTOR_B_DIR, LOW );
+  digitalWrite( MOTOR_B_PWM, LOW );
+}
 
 // void motor_update()
 // m_XXX_speed[-100, 100] (%)
@@ -120,97 +125,23 @@ void decision(){
   
 }
 
-// the setup function runs once when you press reset or power the board
-void setup() {
-  Serial.begin(115200);
-  Serial.println("Setup...");
-  pinMode(PIN_START, INPUT_PULLUP);
-  pinMode(PIN_STOP, INPUT_PULLUP);
-  // Interrupções
-  attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, CHANGE); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
-
-  state = STATE_WAITTING_TO_START;
-
-  //Sharp IR Sensor GP1U5: Fire frequency for IR Led (37KHz)
-  ///tone(PIN_IR_LED1, 37000);
-  
-  //MOTOR Setup A (Left)
-  pinMode( MOTOR_A_DIR, OUTPUT );
-  pinMode( MOTOR_A_PWM, OUTPUT );
-  digitalWrite( MOTOR_A_DIR, LOW );
-  digitalWrite( MOTOR_A_PWM, LOW );
-  //MOTOR Setup B (Right)
-  pinMode( MOTOR_B_DIR, OUTPUT );
-  pinMode( MOTOR_B_PWM, OUTPUT );
-  digitalWrite( MOTOR_B_DIR, LOW );
-  digitalWrite( MOTOR_B_PWM, LOW );
-}
-
-// ISR stop button
-void int_stop_pressed(){
-  Serial.print("INTERRUPT! STOP!\n");
-  state = STATE_ABORTED;
-}
-
-void kill(){
-  //Motor Hard STOP
-  digitalWrite( MOTOR_B_DIR, HIGH );
-  digitalWrite( MOTOR_B_PWM, HIGH );
-  //Sensor stop
-}
-
-// the loop function runs over and over again forever
 void loop() {
-  Serial.print("A espera de START... PIN_START=");
-  Serial.println(digitalRead(PIN_START));
-  state = STATE_WAITTING_TO_START;
-  
-  while(digitalRead(PIN_START) == ON){}
-  Serial.print("PIN_START pressed\n");
-  
-
-  // Main loop
-  while(state != STATE_ALL_DONE && state != STATE_ABORTED){
-    // control loop ms
-    currentMillis = millis();
-    if(currentMillis - previousMillis > control_interval) {
-      previousMillis = currentMillis;
-      
-      Serial.println("Update");
-      //1º Sensor Update
-      sensors_read();
-      //2º Decision 
-      decision();
-      //3º - 
-      motor_update();
-      //digitalWrite( MOTOR_B_DIR, HIGH ); // direction = forward
-      //analogWrite( MOTOR_B_PWM, 100 ); // PWM speed = slow
-      m_left_speed  = 50;
-      m_right_speed = 50;
-    }
-  }//END WHILE
-
-  if (state == STATE_ALL_DONE){
-    Serial.print("Terminei... A espera de START para recomeçar... PIN_START=");
-    Serial.print(digitalRead(PIN_START));
-    Serial.print("; PIN_STOP=");
-    Serial.print(digitalRead(PIN_STOP));
-    Serial.print(";");
-    Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
-    state = STATE_WAITTING_TO_START;
+ 
+  // control loop 10ms
+  currentMillis = millis();
+  if(currentMillis - previousMillis > control_interval) {
+    previousMillis = currentMillis;
+    Serial.println("Update");
+    //1º Sensor Update
+    sensors_read();
+    //2º Decision 
+    decision();
+    //3º - 
+    motor_update();
+    //digitalWrite( MOTOR_B_DIR, HIGH ); // direction = forward
+    //analogWrite( MOTOR_B_PWM, 100 ); // PWM speed = slow
+    m_left_speed  = 50;
+    m_right_speed = 50;
+    
   }
-
-  if (state == STATE_ABORTED){
-    Serial.print("ABORTED! PIN_START=");
-    Serial.print(digitalRead(PIN_START));
-    Serial.print("; PIN_STOP=");
-    Serial.print(digitalRead(PIN_STOP));
-    Serial.print(";");
-    Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
-    kill();
-    state = STATE_WAITTING_TO_START;
-  }
-  
 }
-
-
