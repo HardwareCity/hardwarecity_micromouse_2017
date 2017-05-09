@@ -1,3 +1,19 @@
+/*
+# Stepper ML    # Timer X
+# Stepper MR    # Timer Y
+# Stepper Farol # Timer Z
+# Ultrasound USL    #
+# Ultrasound USR    #
+# Ultrasound USM    #
+# Led RED
+# Interrupt START
+# Interrupt STOP
+# Bluetooth Programação e Debug
+# IR Floor
+*/
+
+#include "laurb9_StepperDriver/DRV8825.h"  # Por usar
+
 #include <Servo.h>
 
 // PINS
@@ -8,11 +24,13 @@
 #define PIN_LED_IR_FRONT 6
 #define PIN_LED_IR_BACK 7
 #define PIN_MOTORS_EN 8  // Activar os dois motores
-#define PIN_MOTOR_LEFT_DIR 10  // Motor Esquerdo Direção
-#define PIN_MOTOR_LEFT_STEP 9    // Motor Esquerdo passo
-#define PIN_MOTOR_RIGHT_DIR 12  // Motor Direito Direção
-#define PIN_MOTOR_RIGHT_STEP 11  // Motor Direito passo
+#define PIN_MOTOR_LEFT_DIR 9  // Motor Esquerdo Direção
+#define PIN_MOTOR_LEFT_STEP 10    // Motor Esquerdo passo
+#define PIN_MOTOR_RIGHT_DIR 11  // Motor Direito Direção
+#define PIN_MOTOR_RIGHT_STEP 12  // Motor Direito passo
 #define PIN_LED_RED 13
+#define SERVOS_M0 14  // Por definir os pinos
+#define SERVOS_M1 15  // Por definir os pinos
 
 #define PIN_TRIG_LEFT A0  // Sensor de distancia LEFT
 #define PIN_ECHO_LEFT A1  // Sensor de distancia LEFT
@@ -38,6 +56,7 @@
 #define SENSOR_FRONT 2
 
 #define MIN_DELAY_MOTORS 17000 // Microseconds
+#define MOTOR_STEPS 200 // Microseconds
 
 // Variaveis globais
 Servo motor_servo_farol;
