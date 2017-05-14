@@ -12,9 +12,12 @@
 # IR Floor
 */
 
-#include "laurb9_StepperDriver/DRV8825.h"  # Por usar
+// #include "laurb9_StepperDriver/DRV8825.h"  // Por usar
+// #include "laurb9_StepperDriver/BasicStepperDriver.h"
+#include <AccelStepper.h>
 
-#include <Servo.h>
+//#include <Servo.h>
+
 
 // PINS
 // PIN 2 Livre, reservado para algo que precise de interrupções, como sensor de batimento
@@ -57,10 +60,13 @@
 #define SENSOR_FRONT 2
 
 #define MIN_DELAY_MOTORS 17000 // Microseconds
-#define MOTOR_STEPS 200 // Microseconds
+#define MOTOR_TOTAL_STEPS 200 // Microseconds
+#define MOTOR_MICROSTEPS 8 // Microseconds
 
 // Variaveis globais
-Servo motor_servo_farol;
+AccelStepper stepper_left(AccelStepper::DRIVER, PIN_MOTOR_LEFT_STEP, PIN_MOTOR_LEFT_DIR);
+AccelStepper stepper_right(AccelStepper::DRIVER, PIN_MOTOR_RIGHT_STEP, PIN_MOTOR_RIGHT_DIR);
+//Servo motor_servo_farol;
 int motor_servo_farol_pos = 0;
 byte state = STATE_WAITTING_TO_START;
 float tmp_duration=0, duration_left=0, duration_right=0, duration_front=0;
@@ -97,6 +103,16 @@ void test(){
     turn_off_main_motors();
 
     Serial.println("Running test()... OK");
+}
+
+void quadrado(){
+//    turn_on_main_motors();
+    for (int i=0; i<4; i++){
+        rodar_motores(200, 200);
+        delay(1000);
+        rodar_motores(100, -100);
+        delay(1000);
+    }
 }
 // TEST ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,23 +179,23 @@ void rodar_motores(int steps_left, int steps_right){
 
 // SERVO MOTOR /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void turn_on_servo(){
-    motor_servo_farol.attach(PIN_MOTOR_SERVO);
+//    motor_servo_farol.attach(PIN_MOTOR_SERVO);
 }
 
 void turn_off_servo(){
-    motor_servo_farol.detach();
+//    motor_servo_farol.detach();
 }
 
 void set_servo_degree(int degree){
     if (motor_servo_farol_pos > degree){
         for (int pos = motor_servo_farol_pos; pos >= degree; pos -= 1) {
-            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
             delay(15);  // waits 15ms for the servo to reach the position
         }
         motor_servo_farol_pos = degree;
     } else if (motor_servo_farol_pos < degree){
         for (int pos = motor_servo_farol_pos; pos <= degree; pos += 1) {
-            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
             delay(15);  // waits 15ms for the servo to reach the position
         }
         motor_servo_farol_pos = degree;
@@ -292,12 +308,28 @@ void setup() {
     // Interrupções
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, FALLING); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
 
+    // Variaveis para inicializar os motores:
+    stepper_left.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_left.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
+    stepper_left.moveTo(-200*MOTOR_MICROSTEPS);
+
+    stepper_right.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_right.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
+    stepper_right.moveTo(200*MOTOR_MICROSTEPS);
+
+
     Serial.begin(115200);
     Serial.println("Setup... OK");
 
     // test
+<<<<<<< HEAD
     ///test();
 
+=======
+//    test();
+//    quadrado();
+    turn_on_main_motors();
+>>>>>>> origin/master
 }
 
 // the loop function runs over and over again forever
@@ -306,7 +338,7 @@ void loop() {
     Serial.println(digitalRead(PIN_START));
     state = STATE_WAITTING_TO_START;
 
-    while(digitalRead(PIN_START) == HIGH){}
+    while(digitalRead(PIN_START) == HIGH){stepper_left.run();stepper_right.run();}
     Serial.print("PIN_START pressed\n");
     turn_on_main_motors();
 
