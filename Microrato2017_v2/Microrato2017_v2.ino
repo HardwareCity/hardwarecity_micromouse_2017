@@ -1,3 +1,6 @@
+// Steper driver with aceleration control.
+// Test: Follow wall
+
 /*
 # Stepper ML    # Timer X
 # Stepper MR    # Timer Y
@@ -11,14 +14,24 @@
 # Bluetooth Programação e Debug
 # IR Floor
 */
+#include <PID_v1.h>
 
-#include "laurb9_StepperDriver/DRV8825.h"  # Por usar
+//Define Variables we'll be connecting to
+double Setpoint, Input, Output;
 
-#include <Servo.h>
+//Specify the links and initial tuning parameters
+PID myPID(&Input, &Output, &Setpoint,2,5,1, DIRECT);
+
+
+// #include "laurb9_StepperDriver/DRV8825.h"  // Por usar
+// #include "laurb9_StepperDriver/BasicStepperDriver.h"
+#include <AccelStepper.h>
+
+//#include <Servo.h>
+
 
 // PINS
 // PIN 2 Livre, reservado para algo que precise de interrupções, como sensor de batimento
-
 #define PIN_STOP 3 // INTERRUPTOR STOP [USA INTERRUPÇÕES]
 #define PIN_START 4 // INTERRUPTOR START
 #define PIN_MOTOR_SERVO 5  // Motor para o farol [USA PWM]
@@ -57,14 +70,17 @@
 #define SENSOR_FRONT 2
 
 #define MIN_DELAY_MOTORS 17000 // Microseconds
-#define MOTOR_STEPS 200 // Microseconds
+#define MOTOR_TOTAL_STEPS 200 // Microseconds
+#define MOTOR_MICROSTEPS 8 // Microseconds
 
 // Variaveis globais
-Servo motor_servo_farol;
+AccelStepper stepper_left(AccelStepper::DRIVER, PIN_MOTOR_LEFT_STEP, PIN_MOTOR_LEFT_DIR);
+AccelStepper stepper_right(AccelStepper::DRIVER, PIN_MOTOR_RIGHT_STEP, PIN_MOTOR_RIGHT_DIR);
+//Servo motor_servo_farol;
 int motor_servo_farol_pos = 0;
 byte state = STATE_WAITTING_TO_START;
 float tmp_duration=0, duration_left=0, duration_right=0, duration_front=0;
-float tmp_distance=0, distance_left=0, distance_right=0, distance_front=0;
+int tmp_distance=0, distance_left=0, distance_right=0, distance_front=0;
 
 int tmp_pin_trig=-1, tmp_pin_echo=-1;
 
@@ -97,6 +113,16 @@ void test(){
     turn_off_main_motors();
 
     Serial.println("Running test()... OK");
+}
+
+void quadrado(){
+//    turn_on_main_motors();
+    for (int i=0; i<4; i++){
+        rodar_motores(200, 200);
+        delay(1000);
+        rodar_motores(100, -100);
+        delay(1000);
+    }
 }
 // TEST ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,23 +189,23 @@ void rodar_motores(int steps_left, int steps_right){
 
 // SERVO MOTOR /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void turn_on_servo(){
-    motor_servo_farol.attach(PIN_MOTOR_SERVO);
+//    motor_servo_farol.attach(PIN_MOTOR_SERVO);
 }
 
 void turn_off_servo(){
-    motor_servo_farol.detach();
+//    motor_servo_farol.detach();
 }
 
 void set_servo_degree(int degree){
     if (motor_servo_farol_pos > degree){
         for (int pos = motor_servo_farol_pos; pos >= degree; pos -= 1) {
-            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
             delay(15);  // waits 15ms for the servo to reach the position
         }
         motor_servo_farol_pos = degree;
     } else if (motor_servo_farol_pos < degree){
         for (int pos = motor_servo_farol_pos; pos <= degree; pos += 1) {
-            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//            motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
             delay(15);  // waits 15ms for the servo to reach the position
         }
         motor_servo_farol_pos = degree;
@@ -190,7 +216,7 @@ void set_servo_degree(int degree){
 
 
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
-float get_distance(int sensor_id){
+int get_distance(int sensor_id){
 //    Serial.print("A ler sensor: ");
 //    Serial.print(sensor_id);
 //    Serial.print("\n");
@@ -218,8 +244,10 @@ float get_distance(int sensor_id){
         digitalWrite(tmp_pin_trig, LOW);  // Added this line //delayMicroseconds(2); // Added this line
         digitalWrite(tmp_pin_trig, HIGH); //delayMicroseconds(10); // Added this line
         digitalWrite(tmp_pin_trig, LOW);
-        tmp_duration = pulseIn(tmp_pin_echo, HIGH); // 875, Timout para 30 cm
-        tmp_distance = (tmp_duration / 2) / 29.154518; // TOF_1cm;
+        ///tmp_duration = pulseIn(tmp_pin_echo, HIGH, 1000); // 875, Timout(us) para 30 cm
+        tmp_duration = pulseIn(tmp_pin_echo, HIGH, 2000);    //Timout(us) 2000us - 220mm
+        ///tmp_distance = (tmp_duration / 2) / 29.154518; // TOF_1cm;
+        tmp_distance = (tmp_duration / 2) / 29 * 10;           // TOF_1mm; 2,9us/mm
         //return duration_left;
     }
 
@@ -227,7 +255,7 @@ float get_distance(int sensor_id){
 //    Serial.print("DISTANCE: ");
 //    Serial.print(tmp_distance);
 //    Serial.print('\n');
-    return tmp_distance;
+    return (int)tmp_distance;
 }
 
 void refresh_all_distance_sensors(){
@@ -264,6 +292,12 @@ void int_stop_pressed(){  // ISR stop button
 
 // the setup function runs once when you press reset or power the board
 void setup() {
+    //PID
+    Input = analogRead(0);
+    Setpoint = 100;
+    //turn the PID on
+    myPID.SetMode(AUTOMATIC);
+
     // PINS
     pinMode(PIN_STOP, INPUT_PULLUP);
     pinMode(PIN_START, INPUT_PULLUP);
@@ -292,36 +326,121 @@ void setup() {
     // Interrupções
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, FALLING); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
 
-    Serial.begin(115200);
+
+    //STEPPER MOTOR's
+stepper_right.setPinsInverted  ( true, false, false );   
+
+    
+    // Variaveis para inicializar os motores:
+    stepper_left.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_left.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
+    ///stepper_left.moveTo(-200*MOTOR_MICROSTEPS);
+
+    stepper_right.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_right.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
+    ///stepper_right.moveTo(200*MOTOR_MICROSTEPS);
+  
+
+    Serial.begin(500000); //115200
     Serial.println("Setup... OK");
 
     // test
-    ///test();
-
+//    test();
+//    quadrado();
+    
 }
+
+#define STEPS_MM  6.1 //Wheel diameter 84mm; 8uSteps
+unsigned long previousMillis = 0;
+const long tick = 100; //t(ms)
+#define SQ1 1 //Line 
+#define SQ2 2 //Rotate
+#define SQ3 3 
+#define SQ4 4
+#define SQ5 5 //Line 
+#define SQ6 6 //Rotate
+#define SQ7 7 
+#define SQ8 8
 
 // the loop function runs over and over again forever
 void loop() {
+long aux1, aux2; 
+byte state_square = SQ1;
+  
     Serial.print("A espera de START... PIN_START=");
     Serial.println(digitalRead(PIN_START));
     state = STATE_WAITTING_TO_START;
 
+    //START
     while(digitalRead(PIN_START) == HIGH){}
+      
     Serial.print("PIN_START pressed\n");
     turn_on_main_motors();
 
     // Main while inside loop()
     while(state != STATE_ALL_DONE && state != STATE_ABORTED){
-        refresh_all_distance_sensors();
-        Serial.print("LEFT=");
-        Serial.print(distance_left);
-        Serial.print(",\tRIGHT=");
-        Serial.print(distance_right);
-        Serial.print(",\tFRONT=");
-        Serial.print(distance_front);
-        Serial.print("\n");
 
+        unsigned long currentMillis = millis();
+        if (currentMillis - previousMillis >= tick) {
+          previousMillis = currentMillis;
 
+          //SENSOR READING
+          refresh_all_distance_sensors();
+          Serial.print("LEFT=");
+          Serial.print(distance_left);
+          Serial.print(",\tRIGHT=");
+          Serial.print(distance_right);
+          Serial.print(",\tFRONT=");
+          Serial.print(distance_front);
+          Serial.print("\n");
+
+/*        //PID
+        Input = analogRead(0);
+        myPID.Compute();
+        analogWrite(3,Output);
+*/
+          //distanceToGo
+          ///aux1 = stepper_left.distanceToGo();
+          ///aux2 = stepper_right.distanceToGo();
+
+   // Test: Square
+          if(state_square == SQ1){
+            stepper_left.moveTo(528*STEPS_MM);    //264mm(perimeter wheel) Straight
+            stepper_right.moveTo(528*STEPS_MM);
+
+            //VERIFY FINISH
+            //distanceToGo
+            aux1 = stepper_left.distanceToGo();
+            aux2 = stepper_right.distanceToGo();
+            if(aux2 != 0 && aux2 != 0){
+              Serial.print(aux1); Serial.print(" : "); Serial.println(aux2);
+            }else{
+              Serial.println("SQ2");
+              state_square = SQ2;
+              stepper_left.setCurrentPosition(0); stepper_right.setCurrentPosition(0);
+            }
+          }else if(state_square == SQ2){
+            
+            stepper_left.moveTo(124*STEPS_MM);    //Rotate CW 90º
+            stepper_right.moveTo(-124*STEPS_MM);
+
+            //VERIFY FINISH
+                      //distanceToGo
+          aux1 = stepper_left.distanceToGo();
+          aux2 = stepper_right.distanceToGo();
+            if(aux2 != 0 && aux2 != 0){
+            Serial.print(aux1); Serial.print(" : "); Serial.println(aux2);
+            }else{
+              Serial.println("SQ1");
+              delay(200);
+              state_square = SQ1;
+              stepper_left.setCurrentPosition(0); stepper_right.setCurrentPosition(0);
+            }
+          }
+        }//IF MILLIS()
+
+        stepper_left.run(); 
+        stepper_right.run();
     } //END Main while inside loop()
 
     if (state == STATE_ALL_DONE){
