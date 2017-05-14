@@ -16,6 +16,7 @@
 */
 #include <PID_v1.h>
 
+#define DEBUG
 //Define Variables we'll be connecting to
 double Setpoint, Input, Output;
 
@@ -46,14 +47,16 @@ PID myPID(&Input, &Output, &Setpoint,2,5,1, DIRECT);
 #define SERVOS_M0 14  // Por definir os pinos
 #define SERVOS_M1 15  // Por definir os pinos
 
-#define PIN_TRIG_LEFT A0  // Sensor de distancia LEFT
-#define PIN_ECHO_LEFT A1  // Sensor de distancia LEFT
-#define PIN_TRIG_RIGHT A2  // Sensor de distancia RIGHT
-#define PIN_ECHO_RIGHT A3  // Sensor de distancia RIGHT
-#define PIN_TRIG_FRONT A4  // Sensor de distancia FRONT
-#define PIN_ECHO_FRONT A5  // Sensor de distancia FRONT
-//#define PIN_COLOR_FLOOR A6  // Sensor do chão
-// #define PIN_LIVRE A7 // LIVRE
+#define PIN_TRIG_LEFT   A0  // Sensor de distancia LEFT
+#define PIN_ECHO_LEFT   A1  // Sensor de distancia LEFT
+#define PIN_TRIG_FRONTL A2  // Sensor de distancia RIGHT
+#define PIN_ECHO_FRONTL A3  // Sensor de distancia RIGHT
+#define PIN_TRIG_FRONTR A4  // Sensor de distancia FRONT
+#define PIN_ECHO_FRONTR A5  // Sensor de distancia FRONT
+#define PIN_TRIG_RIGHT  A6  // Sensor de distancia FRONT
+#define PIN_ECHO_RIGHT  A7  // Sensor de distancia FRONT
+//#define PIN_COLOR_FLOOR A?  // Sensor do chão
+// #define PIN_LIVRE A? // LIVRE
 
 
 // States
@@ -67,7 +70,8 @@ PID myPID(&Input, &Output, &Setpoint,2,5,1, DIRECT);
 // IDs
 #define SENSOR_LEFT 0
 #define SENSOR_RIGHT 1
-#define SENSOR_FRONT 2
+#define SENSOR_FRONTL 3
+#define SENSOR_FRONTR 4
 
 #define MIN_DELAY_MOTORS 17000 // Microseconds
 #define MOTOR_TOTAL_STEPS 200 // Microseconds
@@ -80,7 +84,7 @@ AccelStepper stepper_right(AccelStepper::DRIVER, PIN_MOTOR_RIGHT_STEP, PIN_MOTOR
 int motor_servo_farol_pos = 0;
 byte state = STATE_WAITTING_TO_START;
 float tmp_duration=0, duration_left=0, duration_right=0, duration_front=0;
-int tmp_distance=0, distance_left=0, distance_right=0, distance_front=0;
+int tmp_distance=0, distance_left=0, distance_right=0, distance_frontL=0, distance_frontR=0;
 
 int tmp_pin_trig=-1, tmp_pin_echo=-1;
 
@@ -234,9 +238,13 @@ int get_distance(int sensor_id){
             tmp_pin_trig = PIN_TRIG_RIGHT;
             tmp_pin_echo = PIN_ECHO_RIGHT;
             break;
-        case SENSOR_FRONT:
-            tmp_pin_trig = PIN_TRIG_FRONT;
-            tmp_pin_echo = PIN_ECHO_FRONT;
+        case SENSOR_FRONTL:
+            tmp_pin_trig = PIN_TRIG_FRONTL;
+            tmp_pin_echo = PIN_ECHO_FRONTL;
+            break;
+        case SENSOR_FRONTR:
+            tmp_pin_trig = PIN_TRIG_FRONTR;
+            tmp_pin_echo = PIN_ECHO_FRONTR;
             break;
     }
 
@@ -261,7 +269,24 @@ int get_distance(int sensor_id){
 void refresh_all_distance_sensors(){
     distance_left = get_distance(SENSOR_LEFT);
     distance_right = get_distance(SENSOR_RIGHT);
-    distance_front = get_distance(SENSOR_FRONT);
+    distance_frontL = get_distance(SENSOR_FRONTL);
+    distance_frontR = get_distance(SENSOR_FRONTR);
+
+#ifdef DEBUG
+    //Form Feed char(0x0C): Page break on terminal. Select "Handle Form Feed Character" at CoolTerm preferences 
+    Serial.write(0x0C);
+
+    Serial.print("L FL FR R :");
+    Serial.print(distance_left); Serial.print("\t");
+    //Serial.print(",\tF.L=");
+    Serial.print(distance_frontL); Serial.print("\t");
+    //Serial.print(",\tF.R=");
+    Serial.print(distance_frontR); Serial.print("\t");
+    //Serial.print(",\tRIGHT=");
+    Serial.print(distance_right); Serial.print("\t");
+  
+    Serial.print("\n");
+#endif
 }
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -310,12 +335,16 @@ void setup() {
     pinMode(PIN_MOTOR_RIGHT_DIR, OUTPUT);
     pinMode(PIN_MOTOR_RIGHT_STEP, OUTPUT);
     pinMode(PIN_LED_RED, OUTPUT);
+    
+    //US SENSORS HC-SR04
     pinMode(PIN_TRIG_LEFT, OUTPUT);
     pinMode(PIN_ECHO_LEFT, INPUT);
     pinMode(PIN_TRIG_RIGHT, OUTPUT);
     pinMode(PIN_ECHO_RIGHT, INPUT);
-    pinMode(PIN_TRIG_FRONT, OUTPUT);
-    pinMode(PIN_ECHO_FRONT, INPUT);
+    pinMode(PIN_TRIG_FRONTL, OUTPUT);
+    pinMode(PIN_ECHO_FRONTL, INPUT);
+    pinMode(PIN_TRIG_FRONTR, OUTPUT);
+    pinMode(PIN_ECHO_FRONTR, INPUT);
 
     state = STATE_WAITTING_TO_START;
 
@@ -328,7 +357,7 @@ void setup() {
 
 
     //STEPPER MOTOR's
-stepper_right.setPinsInverted  ( true, false, false );   
+    stepper_right.setPinsInverted  ( true, false, false );   
 
     
     // Variaveis para inicializar os motores:
@@ -341,7 +370,7 @@ stepper_right.setPinsInverted  ( true, false, false );
     ///stepper_right.moveTo(200*MOTOR_MICROSTEPS);
   
 
-    Serial.begin(500000); //115200
+    Serial.begin(230400); //115200; 500000
     Serial.println("Setup... OK");
 
     // test
@@ -386,13 +415,6 @@ byte state_square = SQ1;
 
           //SENSOR READING
           refresh_all_distance_sensors();
-          Serial.print("LEFT=");
-          Serial.print(distance_left);
-          Serial.print(",\tRIGHT=");
-          Serial.print(distance_right);
-          Serial.print(",\tFRONT=");
-          Serial.print(distance_front);
-          Serial.print("\n");
 
 /*        //PID
         Input = analogRead(0);
@@ -403,7 +425,7 @@ byte state_square = SQ1;
           ///aux1 = stepper_left.distanceToGo();
           ///aux2 = stepper_right.distanceToGo();
 
-   // Test: Square
+   /* Test: Square
           if(state_square == SQ1){
             stepper_left.moveTo(528*STEPS_MM);    //264mm(perimeter wheel) Straight
             stepper_right.moveTo(528*STEPS_MM);
@@ -436,7 +458,7 @@ byte state_square = SQ1;
               state_square = SQ1;
               stepper_left.setCurrentPosition(0); stepper_right.setCurrentPosition(0);
             }
-          }
+          }*/
         }//IF MILLIS()
 
         stepper_left.run(); 
