@@ -338,6 +338,7 @@ void setup() {
     set_pins_mode();
     turn_off_main_motors();
     turn_off_led_red();
+    turn_off_servo();
     Serial.begin(BOUDRATE);
 
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, FALLING); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
