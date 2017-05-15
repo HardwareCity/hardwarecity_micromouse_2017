@@ -267,6 +267,9 @@ int aux=0;
     
     
     aux = analogRead(PIN_IR_FLOOR);  
+    Serial.print (aux); Serial.print(" ");
+    
+    aux = analogRead(PIN_IR_FLOOR2);  
     Serial.println (aux); 
     
     if(aux > 400)
@@ -355,6 +358,7 @@ void set_pins_mode(){
     pinMode(PIN_TRIG_FRONTR, OUTPUT);   pinMode(PIN_ECHO_FRONTR, INPUT);  //US SENSORS HC-SR04
 //    pinMode(PIN_COLOR_FLOOR, INPUT);  // IR floor
     pinMode(PIN_IR_FLOOR, INPUT);  // IR floor
+    pinMode(PIN_IR_FLOOR2, INPUT);  // IR floor
 }
 // AUXILIAR FUNCTIONS //////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
