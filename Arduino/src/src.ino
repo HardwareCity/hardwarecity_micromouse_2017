@@ -16,7 +16,7 @@
 //#include "AccelStepper/AccelStepper.h"
 #include <AccelStepper.h>
 //#include "Adafruit_TCS34725/Adafruit_TCS34725.h"
-#include "Adafruit_TCS34725.h"
+//TMP #include "Adafruit_TCS34725.h"
 #include "DefinePins.h"
 #include "STATE_MACHINES.h"
 
@@ -48,7 +48,7 @@
 unsigned long currentMillis=0;
 long aux1=0, aux2=0; // Auxiliar Variables
 byte state_square = SQ1; // Estado do quadrado (para testes)
-Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS34725_GAIN_1X);
+//TMP Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS34725_GAIN_1X);
 uint16_t r, g, b, c, colorTemp, lux;
 Servo motor_servo_farol;
 AccelStepper stepper_left(AccelStepper::DRIVER, PIN_MOTOR_LEFT_STEP, PIN_MOTOR_LEFT_DIR);
@@ -61,7 +61,7 @@ float tmp_distance=0;
 unsigned int distance_left=0, distance_right=0, distance_frontL=0, distance_frontR=0;
 int tmp_pin_trig=-1, tmp_pin_echo=-1;
 unsigned long previousMillis = 0;
-const long tick = 100; //t(ms)
+const long tick = 10; //t(ms)
 
 // TEST ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void test(){
@@ -244,13 +244,38 @@ void refresh_all_distance_sensors(){
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void floor_sensor_auto_calibration(){
+int reads[100];
+
+  //Motor move forward
+  for(int i=0; i>100; i++){
+      reads[i] = analogRead(PIN_IR_FLOOR);  
+      
+  }
+  
+}
 
 // FLOOR SENSOR ////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool floor_sensor_on_cheese(){
-    return false;
+int aux=0;
+
+    Serial.print(" FLOOR READ "); 
+    /*for(int i=0; i>10; i++){
+      aux += analogRead(PIN_IR_FLOOR);  
+    }
+    aux = aux / 10;*/
+    
+    
+    aux = analogRead(PIN_IR_FLOOR);  
+    Serial.println (aux); 
+    
+    if(aux > 400)
+      return false;
+    else
+      return false;
     // TODO: Mudar este valor!
 
-    tcs.getRawData(&r, &g, &b, &c);
+/* TMP    tcs.getRawData(&r, &g, &b, &c);
     colorTemp = tcs.calculateColorTemperature(r, g, b);
     lux = tcs.calculateLux(r, g, b);
 
@@ -274,7 +299,7 @@ bool floor_sensor_on_cheese(){
             Serial.println("BLACK");
         #endif
         return true;
-    }
+    }*/
 
 }
 // FLOOR SENSOR ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +342,6 @@ void set_pins_mode(){
     pinMode(PIN_STOP, INPUT_PULLUP);
     pinMode(PIN_START, INPUT_PULLUP);
     pinMode(PIN_MOTOR_SERVO, OUTPUT);
-//    pinMode(PIN_LED_IR_FRONT, INPUT);
 //    pinMode(PIN_LED_IR_BACK, INPUT);
     pinMode(PIN_MOTORS_EN, OUTPUT);
     pinMode(PIN_MOTOR_LEFT_DIR, OUTPUT);
@@ -330,6 +354,7 @@ void set_pins_mode(){
     pinMode(PIN_TRIG_FRONTL, OUTPUT);   pinMode(PIN_ECHO_FRONTL, INPUT);  //US SENSORS HC-SR04
     pinMode(PIN_TRIG_FRONTR, OUTPUT);   pinMode(PIN_ECHO_FRONTR, INPUT);  //US SENSORS HC-SR04
 //    pinMode(PIN_COLOR_FLOOR, INPUT);  // IR floor
+    pinMode(PIN_IR_FLOOR, INPUT);  // IR floor
 }
 // AUXILIAR FUNCTIONS //////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +376,8 @@ void setup() {
 
 
     // Francisco: Comentar isto enquanto Não tivermos sensor: -----
-    if (tcs.begin()) {
+///TMP
+/*    if (tcs.begin()) {
     #ifdef DEBUG
         Serial.println("Found RGB sensor");
     #endif
@@ -369,15 +395,20 @@ void setup() {
 //        }; // halt!
     }
     // Francisco: Comentar isto enquanto Não tivermos sensor: -----
-
+*/
 
     #ifdef DEBUG
         Serial.println("Setup... OK");
     #endif
 
     #ifdef DEBUG
-        test(); // Testar Motores e Led
+  //TMP      test(); // Testar Motores e Led
     #endif
+}
+
+void dbg_motor_status(){
+  
+  
 }
 
 // the loop function runs over and over again forever
@@ -392,7 +423,7 @@ void loop() {
     #endif
     turn_on_main_motors();
     turn_on_servo();
-    set_servo_degree(0);
+    //TMP set_servo_degree(0);
     mouse_state = STATE_MOUSE_WALKING;
 
     // Main while inside loop()
@@ -400,6 +431,11 @@ void loop() {
         currentMillis = millis();
         if (currentMillis - previousMillis >= tick) {
             previousMillis = currentMillis;
+
+            //Floor Auto Calibration
+            #ifdef FLOOR_AUTO_CALIBRATION
+                
+            #endif
 
             refresh_all_distance_sensors();  //SENSOR READING
             if (journey_state == STATE_JOURNEY_GOING_TO_CHEESE and floor_sensor_on_cheese() == true){
@@ -440,9 +476,13 @@ void loop() {
                     mouse_state=STATE_MOUSE_WALKING;
                 }
             }else{ // WALKING AROUND
+              //FM
+                Serial.print("distanceToGo:    "); Serial.println(stepper_left.distanceToGo());
+                Serial.print("move:            "); Serial.println(66*STEPS_MM);
+                Serial.print("currentposition: "); Serial.println(stepper_left.currentPosition());
+                
                 stepper_left.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
                 stepper_right.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
-
             }
 
         }//IF MILLIS()
