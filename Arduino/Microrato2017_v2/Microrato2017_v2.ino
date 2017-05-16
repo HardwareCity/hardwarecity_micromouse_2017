@@ -276,7 +276,7 @@ void refresh_all_distance_sensors(){
     //Form Feed char(0x0C): Page break on terminal. Select "Handle Form Feed Character" at CoolTerm preferences 
     Serial.write(0x0C);
 
-    Serial.print("L FL FR R :");
+    Serial.print("L_FL_FR_R>  ");
     Serial.print(distance_left); Serial.print("\t");
     //Serial.print(",\tF.L=");
     Serial.print(distance_frontL); Serial.print("\t");
@@ -318,7 +318,7 @@ void int_stop_pressed(){  // ISR stop button
 // the setup function runs once when you press reset or power the board
 void setup() {
     //PID
-    Input = analogRead(0);
+    Input = 0;
     Setpoint = 100;
     //turn the PID on
     myPID.SetMode(AUTOMATIC);
