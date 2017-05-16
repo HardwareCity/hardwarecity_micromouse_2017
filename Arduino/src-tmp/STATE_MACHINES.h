@@ -14,8 +14,6 @@
     #define STATE_MOUSE_ALL_DONE 5
     #define STATE_MOUSE_ABORTED 6
 
-
-    //TODO: Usas valores repetidos nos estados?!
     // (Estou a ir ou a voltar do farol? Se tiver a voltar, desligo o sensor do chão e o farol)
     #define STATE_JOURNEY_GOING_TO_CHEESE 1
     #define STATE_JOURNEY_RETURN_TO_HOME 2
