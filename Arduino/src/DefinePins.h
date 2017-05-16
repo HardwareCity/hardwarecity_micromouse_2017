@@ -24,9 +24,9 @@
     #define PIN_ECHO_FRONTR A5  // Sensor de distancia FRONT
     #define PIN_TRIG_RIGHT  A6  // Sensor de distancia FRONT
     #define PIN_ECHO_RIGHT  A7  // Sensor de distancia FRONT
-    #define PIN_IR_FLOOR  A8  // Sensor do chão
-//    #define PIN_COLOR_FLOOR  A8  // Sensor do chão
-    // #define PIN_COLOR_FLOOR A?  // Sensor do chão
+    #define PIN_IR_FLOOR_LEFT  A8  // Sensor do chão
+    #define PIN_IR_FLOOR_RIGHT  A9  // Sensor do chão
+    #define PIN_FROL A10  // Sensor da torre
     // #define PIN_LIVRE A? // LIVRE
 
 #endif //SRC_DEFINEPINS_H
