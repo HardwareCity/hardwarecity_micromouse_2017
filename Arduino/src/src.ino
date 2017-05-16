@@ -20,7 +20,7 @@
 #include "DefinePins.h"
 #include "STATE_MACHINES.h"
 
-#define DEBUG // Uncoment for DEBUG mode     <<<-------------
+//#define DEBUG // Uncoment for DEBUG mode     <<<-------------
 
 #define BOUDRATE 230400 // 115200 ; 230400 ; 500000
 #define DISTANCE_BETWEEN_WHEELS 150 // Distancia entre as 2 rodas em mm
@@ -64,7 +64,7 @@ AccelStepper stepper_left(AccelStepper::DRIVER, PIN_MOTOR_LEFT_STEP, PIN_MOTOR_L
 AccelStepper stepper_right(AccelStepper::DRIVER, PIN_MOTOR_RIGHT_STEP, PIN_MOTOR_RIGHT_DIR);
 byte mouse_state = STATE_MOUSE_WAITTING_TO_START;
 byte journey_state = STATE_JOURNEY_GOING_TO_CHEESE;
-int motor_servo_farol_pos=0, motor_servo_farol_dir=LEFT;
+int motor_servo_farol_pos=-1, motor_servo_farol_dir=LEFT;
 float tmp_duration=0, duration_left=0, duration_right=0, duration_frontL=0, duration_frontR=0;
 float tmp_distance=0;
 unsigned int distance_left=0, distance_right=0, distance_frontL=0, distance_frontR=0;
@@ -285,17 +285,18 @@ void refresh_all_distance_sensors(){
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+// FLOOR SENSOR ////////////////////////////////////////////////////////////////////////////////////////////////////////
 void floor_sensor_auto_calibration(){
     int reads[100];
     //Motor move forward
     for(int i=0; i>100; i+=2){
-      reads[i] = analogRead(PIN_IR_FLOOR_LEFT);
-      reads[i+1] = analogRead(PIN_IR_FLOOR_RIGHT);
+        reads[i] = analogRead(PIN_IR_FLOOR_LEFT);
+        reads[i+1] = analogRead(PIN_IR_FLOOR_RIGHT);
 
     }
 }
 
-// FLOOR SENSOR ////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool floor_sensor_on_cheese(){
 //    #ifdef DEBUG
 //        Serial.print(" FLOOR READ ");
@@ -311,7 +312,7 @@ bool floor_sensor_on_cheese(){
 //    #ifdef DEBUG
 //        Serial.println(floor_value);
 //    #endif
-    
+    // TODO: Melhorar (exemplo com filtros e media, etc amostragens)
     if(floor_value_left >= THRESHOLD_BLACK or floor_value_right >= THRESHOLD_BLACK)
         return true;
     else
@@ -319,6 +320,38 @@ bool floor_sensor_on_cheese(){
 
 }
 // FLOOR SENSOR ////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// BEACON SENSOR ///////////////////////////////////////////////////////////////////////////////////////////////////////
+void turn_on_beacon(){
+    digitalWrite(PIN_BEACON_EN1, HIGH);
+    digitalWrite(PIN_BEACON_EN2, HIGH);
+}
+
+void turn_off_beacon(){
+    digitalWrite(PIN_BEACON_EN1, LOW);
+    digitalWrite(PIN_BEACON_EN2, LOW);
+}
+
+//840us(HIGH) 1400us(Total) 560us(LOW)
+bool read_beacon(){
+    byte sum=0;
+    turn_on_beacon(); // Liga-se e volta-se a desligar, porque se tiver sempre ligado, ele fica tolo.
+    delay(20);  // Time to stabilization power suply // TODO: Colocar aqui um link para a foto do osciloscopio
+    for(int i=0; i<14; i++){
+        sum += digitalRead(PIN_BEACON);
+        delayMicroseconds(100);
+    }
+    turn_off_beacon();
+    //delay(20);
+    if(sum > 12)
+        return true; //Signal is allways high
+    else
+        return false;
+}
+
+// BEACON SENSOR ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -369,10 +402,12 @@ void updatePosition()
 
 // INTERRUPTIONS ///////////////////////////////////////////////////////////////////////////////////////////////////////
 void int_stop_pressed(){  // ISR stop button
+    noInterrupts();
     if (mouse_state != STATE_MOUSE_ABORTED) {
         Serial.print("INTERRUPT! STOP!\n");
         mouse_state = STATE_MOUSE_ABORTED;
     }
+    interrupts();
 }
 // INTERRUPTIONS ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -391,7 +426,12 @@ void print_all_variables(){
     Serial.print(distance_frontR); Serial.print("\t");
     Serial.println(distance_right);
     Serial.print("FLOOR SENSOR:\tLEFT: "); Serial.print(floor_value_left); Serial.print("\tRIGHT: "); Serial.println(floor_value_right);
-    delay(10);
+    Serial.print("SERVO DIR: "); Serial.println(motor_servo_farol_dir);
+    Serial.print("BEACON: "); Serial.println(read_beacon());
+    Serial.print("                                                    ");
+    Serial.print("                                                    ");
+    Serial.print("                                                    ");
+    Serial.print("                                                    ");
 
 //    Serial.print("distanceToGo:    "); Serial.println(stepper_left.distanceToGo());
 //    Serial.print("move:            "); Serial.println(66*STEPS_MM);
@@ -400,10 +440,22 @@ void print_all_variables(){
 }
 
 void do_things_on_cheese(){
-    mouse_state = STATE_MOUSE_ON_CHEESE;
-    journey_state = STATE_JOURNEY_RETURN_TO_HOME;
-    turn_on_led_red();
-    mouse_state = STATE_MOUSE_WALKING;
+    noInterrupts();
+    if (mouse_state!=STATE_MOUSE_ABORTED) {
+        mouse_state = STATE_MOUSE_ON_CHEESE;
+        journey_state = STATE_JOURNEY_RETURN_TO_HOME;
+        turn_on_led_red();
+        mouse_state = STATE_MOUSE_WALKING;
+        stepper_left.setCurrentPosition(0);
+        stepper_right.setCurrentPosition(0);
+    }
+    interrupts();
+    stepper_left.moveTo(264*STEPS_MM);  // 264mm(perimeter wheel) Straight
+    stepper_right.moveTo(-264*STEPS_MM);  // 264mm(perimeter wheel) Straight
+    while (stepper_left.currentPosition() < (264*STEPS_MM) or stepper_left.currentPosition() > (-264*STEPS_MM)){
+        stepper_left.run();
+        stepper_right.run();
+    }
 }
 
 void timeout(){
@@ -444,6 +496,10 @@ void set_pins_mode(){
 //    pinMode(PIN_COLOR_FLOOR, INPUT);  // IR floor
     pinMode(PIN_IR_FLOOR_LEFT, INPUT);  // IR floor
     pinMode(PIN_IR_FLOOR_RIGHT, INPUT);  // IR floor
+
+    pinMode(PIN_BEACON, INPUT);
+    pinMode(PIN_BEACON_EN1, OUTPUT);   //Sensor ON/Off
+    pinMode(PIN_BEACON_EN2, OUTPUT);   //Sensor ON/Off
 }
 // AUXILIAR FUNCTIONS //////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +507,7 @@ void set_pins_mode(){
 void setup() {
     Serial.begin(BOUDRATE);
     set_pins_mode();
+    turn_off_beacon();
     turn_off_main_motors();
     turn_off_led_red();
     turn_on_servo();
@@ -518,6 +575,7 @@ void loop() {
                     ){
                 mouse_state=STATE_MOUSE_AVOIDING_COLISION;
             } if (mouse_state==STATE_MOUSE_AVOIDING_COLISION){
+//                updatePosition();
                 if ( (distance_left + distance_frontL) > (distance_right + distance_frontR) ){
                     stepper_left.move(5*STEPS_MM);  // 264mm(perimeter wheel) Straight
                     stepper_right.move(-5*STEPS_MM);  // 264mm(perimeter wheel) Straight
@@ -531,20 +589,22 @@ void loop() {
                         (distance_frontL!=0 and distance_frontL<100) or
                         (distance_frontR!=0 and distance_frontR<100)
                 )){
-                    mouse_state=STATE_MOUSE_WALKING;
+                    noInterrupts();
+                    if (mouse_state!=STATE_MOUSE_ABORTED) {
+                        mouse_state = STATE_MOUSE_WALKING;
+                    }
+                    interrupts();
                 }
             }else{ // WALKING AROUND
-                servo_rotate();
+//                servo_rotate();
                 //FM
 //                Serial.print("distanceToGo:    "); Serial.println(stepper_left.distanceToGo());
 //                Serial.print("move:            "); Serial.println(66*STEPS_MM);
 //                Serial.print("currentposition: "); Serial.println(stepper_left.currentPosition());
-                
+                updatePosition();
                 stepper_left.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
                 stepper_right.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
             }
-
-            updatePosition();
 //            #ifdef DEBUG
 //                Serial.print("POSITION: X="); Serial.print(digitalRead(_xPosition));
 //                Serial.print("; Y="); Serial.print(digitalRead(_yPosition)); Serial.print(";");
@@ -554,6 +614,7 @@ void loop() {
             if (time_seconds >= 150){
                 timeout();
             }
+            servo_rotate();
 
         }//IF MILLIS()
 
@@ -572,7 +633,11 @@ void loop() {
             Serial.print("; PIN_STOP="); Serial.print(digitalRead(PIN_STOP)); Serial.print(";");
             Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
         #endif
-        mouse_state = STATE_MOUSE_WAITTING_TO_START;
+        noInterrupts();
+        if (mouse_state!=STATE_MOUSE_ABORTED) {
+            mouse_state = STATE_MOUSE_WAITTING_TO_START;
+        }
+        interrupts();
         turn_off_led_red();
         turn_off_main_motors();
     }
@@ -583,12 +648,17 @@ void loop() {
             Serial.print("; PIN_STOP="); Serial.print(digitalRead(PIN_STOP)); Serial.print(";");
             Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
         #endif
-        mouse_state = STATE_MOUSE_WAITTING_TO_START;
+        noInterrupts();
+        if (mouse_state!=STATE_MOUSE_ABORTED) {
+            mouse_state = STATE_MOUSE_WAITTING_TO_START;
+        }
+        interrupts();
         turn_off_led_red();
         turn_off_servo();
         stepper_left.stop();
         stepper_right.stop();
         turn_off_main_motors();
+        turn_off_beacon();
     }
 
 } // END loop()
