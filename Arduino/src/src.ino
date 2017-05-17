@@ -577,6 +577,7 @@ void setup() {
 
 // the loop function runs over and over again forever
 void loop() {
+<<<<<<< Updated upstream
     mouse_state = STATE_MOUSE_WAITTING_TO_START;
     #ifdef DEBUG_HC
         Serial.print("Waitting for START... PIN_START="); Serial.println(digitalRead(PIN_START));
@@ -840,4 +841,7 @@ void loop() {
         turn_off_beacon();
     }
 } // END loop()
+=======
+    } // END loop()
+>>>>>>> Stashed changes
 
