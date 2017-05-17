@@ -27,9 +27,9 @@ const unsigned long TICK = 50; //t(ms)
 #define SERVO_STEP_ANGLE 8
 #define PERIMETER_ROBOT_PERIMETER 481 // Perimeter between wheels
 
-#define TIMEOUT 5000 // 4 Minutos até timeout, pára 5 segundos antes (235 000 ms)
+#define TIMEOUT 180000 // 3 Minutos até timeout
 
-#define BOUDRATE 230400 // 115200 ; 230400 ; 500000
+#define BOUDRATE 2000000 // 115200 ; 230400 ; 500000
 #define DISTANCE_BETWEEN_WHEELS 150 // Distancia entre as 2 rodas em mm
 
 #define LEFT 0
@@ -62,6 +62,7 @@ const double pi = 3.141592;
 // Global Variables
 int myInts[5100][3]; // <-- Era apra salvar o mapa, mas não está em uso
 long aux1=0, aux2=0; // Auxiliar Variables
+unsigned long colid = 0;
 unsigned long count_beacon=0;
 unsigned long time_start=0;
 unsigned long currentMillis=0;
@@ -88,9 +89,9 @@ float _xPosition=0, _yPosition=0, _theta;
 double leftDegrees=0, rightDegrees=0;
 double dLeft=0, dRight=0, dCenter=0;
 double phi=0;
-double time_seconds=0;
-int floor_value_left=-1;
-int floor_value_right=-1;
+double time_seconds = 0;
+int floor_value_left =- 1;
+int floor_value_right =- 1;
 
 // TEST ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void test(){
@@ -204,13 +205,13 @@ void set_servo_degree(int degree){
 //    else{
 //        if (motor_servo_farol_pos > degree){
 //            for (int pos = motor_servo_farol_pos; pos >= degree; pos -= 1) {
-//                motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//                motor_servo_farol.write(pos);  // tell servo to go to position in variable "pos"
 //                delay(15);  // waits 15ms for the servo to reach the position
 //            }
 //            motor_servo_farol_pos = degree;
 //        } else if (motor_servo_farol_pos < degree){
 //            for (int pos = motor_servo_farol_pos; pos <= degree; pos += 1) {
-//                motor_servo_farol.write(pos);  // tell servo to go to position in variable 'pos'
+//                motor_servo_farol.write(pos);  // tell servo to go to position in variable "pos"
 //                delay(15);  // waits 15ms for the servo to reach the position
 //            }
 //            motor_servo_farol_pos = degree;
@@ -242,10 +243,6 @@ void servo_rotate(){
 
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
 unsigned int get_distance(int sensor_id){
-//    Serial.print("A ler sensor: ");
-//    Serial.print(sensor_id);
-//    Serial.print("\n");
-
     tmp_pin_trig=-1;
     tmp_pin_echo=-1;
     tmp_distance=-1;
@@ -280,7 +277,7 @@ unsigned int get_distance(int sensor_id){
         //return duration_left;
     }
 
-    // Serial.print("DISTANCE: "); Serial.print(tmp_distance); Serial.print('\n');
+    // Serial.print("DISTANCE: "); Serial.print(tmp_distance); Serial.print("\n");
     return (unsigned int)tmp_distance;
 }
 
@@ -289,19 +286,6 @@ void refresh_all_distance_sensors(){
     distance_right = get_distance(SENSOR_RIGHT);
     distance_frontL = get_distance(SENSOR_FRONTL);
     distance_frontR = get_distance(SENSOR_FRONTR);
-
-//    #ifdef DEBUG_HC_HC
-//        Serial.print("L FL FR R :");
-//        Serial.print(distance_left); Serial.print("\t");
-//        //Serial.print(",\tF.L=");
-//        Serial.print(distance_frontL); Serial.print("\t");
-//        //Serial.print(",\tF.R=");
-//        Serial.print(distance_frontR); Serial.print("\t");
-//        //Serial.print(",\tRIGHT=");
-//        Serial.print(distance_right); Serial.print("\t");
-//
-//        Serial.print("\n");
-//    #endif
 }
 // DISTANCE SENSORS ////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -323,7 +307,7 @@ bool floor_sensor_on_cheese(){
 //        Serial.print(" FLOOR READ ");
 //    #endif
     /*for(int i=0; i>10; i++){
-      aux += analogRead(PIN_IR_FLOOR);  
+      aux += analogRead(PIN_IR_FLOOR);
     }
     aux = aux / 10;*/
 
@@ -334,7 +318,7 @@ bool floor_sensor_on_cheese(){
 //        Serial.println(floor_value);
 //    #endif
     // TODO: Melhorar (exemplo com filtros e media, etc amostragens)
-    if(floor_value_left >= THRESHOLD_BLACK or floor_value_right >= THRESHOLD_BLACK)
+    if(floor_value_left >= THRESHOLD_BLACK and floor_value_right >= THRESHOLD_BLACK)
         return true;
     else
         return false;
@@ -419,7 +403,7 @@ void updatePosition()
     // calculate the length of the arc traveled by Colin
     dCenter = (dLeft + dRight) / 2.0;
 
-    // calculate Colin's change in angle
+    // calculate Colin"s change in angle
     phi = (dRight - dLeft) / (double)DISTANCE_BETWEEN_WHEELS;
     // add the change in angle to the previous angle
     _theta += phi;
@@ -427,7 +411,7 @@ void updatePosition()
     if (_theta > 2.0 * pi) _theta -= 2.0 * pi;
     if (_theta < 0.0) _theta += 2.0 * pi;
 
-    // update Colin's x and y coordinates
+    // update Colin"s x and y coordinates
     _xPosition += dCenter * cos(_theta);
     _yPosition += dCenter * sin(_theta);
 }
@@ -442,8 +426,11 @@ void int_stop_pressed(){  // ISR stop button
         Serial.print("INTERRUPT! STOP!\n");
         mouse_state = STATE_MOUSE_ABORTED;
     }
+    turn_off_led_red();
     stepper_left.stop();
     stepper_right.stop();
+    stepper_left.setCurrentPosition(0);
+    stepper_right.setCurrentPosition(0);
     stepper_left.moveTo(0);
     stepper_right.moveTo(0);
 
@@ -476,6 +463,7 @@ void print_all_variables(){
 }
 
 void delay_with_run(unsigned long delay){
+    // TODO: TEM UM BUG
     tmp_currentMillis1 = millis();
     tmp_prev_currentMillis1 = tmp_currentMillis1;
     while (tmp_currentMillis1 - tmp_prev_currentMillis1 < delay){
@@ -486,21 +474,21 @@ void delay_with_run(unsigned long delay){
 }
 
 void do_things_on_cheese(){
-//    noInterrupts();
-    if (mouse_state!=STATE_MOUSE_ABORTED) {
+    noInterrupts();
+    if (mouse_state != STATE_MOUSE_ABORTED) {
+
         mouse_state = STATE_MOUSE_ON_CHEESE;
         journey_state = STATE_JOURNEY_RETURN_TO_HOME;
         turn_on_led_red();
-        stepper_left.stop();
-        stepper_right.stop();
-        stepper_left.moveTo(0);
-        stepper_right.moveTo(0);
+//        delay_with_run(100);
+        kill_motors();
+        delay(1000);
         mouse_state = STATE_MOUSE_WALKING;
     }
-//    interrupts();
+    interrupts();
     stepper_left.moveTo(PERIMETER_ROBOT_PERIMETER/2*STEPS_MM);  // 264mm(perimeter wheel) Straight [ /2 => 90º ]
     stepper_right.moveTo(-PERIMETER_ROBOT_PERIMETER/2*STEPS_MM);  // 264mm(perimeter wheel) Straight [ /2 => 90º ]
-    while (stepper_left.currentPosition() < (PERIMETER_ROBOT_PERIMETER/2*STEPS_MM) or stepper_left.currentPosition() > (-PERIMETER_ROBOT_PERIMETER/2*STEPS_MM)){
+    while (mouse_state != STATE_MOUSE_ABORTED and (stepper_left.currentPosition() < (PERIMETER_ROBOT_PERIMETER/2*STEPS_MM) or stepper_left.currentPosition() > (-PERIMETER_ROBOT_PERIMETER/2*STEPS_MM))){
         stepper_left.run();
         stepper_right.run();
     }
@@ -552,6 +540,15 @@ void set_pins_mode(){
     pinMode(PIN_BEACON_EN1, OUTPUT);   //Sensor ON/Off
     pinMode(PIN_BEACON_EN2, OUTPUT);   //Sensor ON/Off
 }
+
+void kill_motors(){
+    stepper_left.setCurrentPosition(0);
+    stepper_right.setCurrentPosition(0);
+    stepper_left.stop();
+    stepper_right.stop();
+    stepper_left.moveTo(0);
+    stepper_right.moveTo(0);
+}
 // AUXILIAR FUNCTIONS //////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -567,9 +564,9 @@ void setup() {
 
     attachInterrupt(digitalPinToInterrupt(PIN_STOP), int_stop_pressed, FALLING); // RISING - to trigger when the pin goes from low to high; FALLING - for when the pin goes from high to low;
 
-    stepper_left.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_left.setMaxSpeed(500.0 * MOTOR_MICROSTEPS);
     stepper_left.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
-    stepper_right.setMaxSpeed(1000.0 * MOTOR_MICROSTEPS);
+    stepper_right.setMaxSpeed(500.0 * MOTOR_MICROSTEPS);
     stepper_right.setAcceleration(1000.0 * MOTOR_MICROSTEPS);
     stepper_right.setPinsInverted  ( true, false, false );
 
@@ -608,62 +605,48 @@ void loop() {
         currentMillis = millis();
         if ((currentMillis - previousMillis_t1) >= TICK) {
             previousMillis_t1 = currentMillis;
-//            #ifdef DEBUG_HC
-//                //Form Feed char(0x0C): Page break on terminal. Select "Handle Form Feed Character" at CoolTerm preferences
-//                Serial.write(0x0C);
-//            #endif
 
             refresh_all_distance_sensors();  //SENSOR READING
+//            mouse_state = STATE_MOUSE_AVOIDING_COLISION;
+            Serial.println(mouse_state);
             if (journey_state == STATE_JOURNEY_GOING_TO_CHEESE and floor_sensor_on_cheese() == true){
+                colid = 0;
                 Serial.println("Cheguei ao queijo!");
                 do_things_on_cheese();
-                delay(5000);
+                delay(1000);
             } else if (
                     journey_state == STATE_JOURNEY_GOING_TO_CHEESE and
                     (
-                    (distance_left!=0 and distance_left<100) or
-                    (distance_right!=0 and distance_right<100) or
-                    (distance_frontL!=0 and distance_frontL<100) or
-                    (distance_frontR!=0 and distance_frontR<100)
+                    (distance_left!=0 and distance_left<150) or
+                    (distance_right!=0 and distance_right<150) or
+                    (distance_frontL!=0 and distance_frontL<150) or
+                    (distance_frontR!=0 and distance_frontR<150)
                     )
                     and mouse_state != STATE_MOUSE_AVOIDING_COLISION
                     ){
                 Serial.println("Perigo!");
-                mouse_state=STATE_MOUSE_AVOIDING_COLISION;
-            } if (mouse_state==STATE_MOUSE_SEARCH_BEACON){
-                Serial.println("STATE_MOUSE_SEARCH_BEACON");
+                mouse_state = STATE_MOUSE_AVOIDING_COLISION;
+            } if (mouse_state == STATE_MOUSE_SEARCH_BEACON){
+//                Serial.println("STATE_MOUSE_SEARCH_BEACON");
+                Serial.println("S_S_B");
+                colid = 0;
 
-                // motor_servo_farol_pos = -1;
-                stepper_left.stop();
-                stepper_right.stop();
-                stepper_left.setCurrentPosition(0);
-                stepper_right.setCurrentPosition(0);
-                stepper_left.moveTo(0);
-                stepper_right.moveTo(0);
-
+                kill_motors();
 
                 stepper_left.moveTo(PERIMETER_ROBOT_PERIMETER*STEPS_MM);  // 264mm(perimeter wheel) Straight
                 stepper_right.moveTo(-PERIMETER_ROBOT_PERIMETER*STEPS_MM);  // 264mm(perimeter wheel) Straight
-//                stepper_left.setMaxSpeed(100.0 * MOTOR_MICROSTEPS);
-//                stepper_left.setAcceleration(100.0 * MOTOR_MICROSTEPS);
-//                stepper_right.setMaxSpeed(100.0 * MOTOR_MICROSTEPS);
-//                stepper_right.setAcceleration(100.0 * MOTOR_MICROSTEPS);
+
                 aux1 = 90; // Numero de Samples do Beacon por rotação
-                int tmp_beacon=false;
-                while (aux1>0 and !tmp_beacon) {
+                int tmp_beacon = false;
+                while (aux1 > 0 and !tmp_beacon) {
                     // 1st - TURN ON - DELAY; 2ns - READ; 3rd - TURN OFF; 4th - DELAY
                     turn_on_beacon();
                     delay_with_run(18);
                     tmp_beacon = read_beacon();
                     if (tmp_beacon){
-                        Serial.println("LED ON and STOP");
-                        turn_on_led_red();
-                        stepper_left.stop();
-                        stepper_right.stop();
-                        stepper_left.setCurrentPosition(0);
-                        stepper_right.setCurrentPosition(0);
-                        stepper_left.moveTo(0);
-                        stepper_right.moveTo(0);
+//                        Serial.println("LED ON and STOP");
+//                        turn_on_led_red();
+                        kill_motors();
                     } else {
                         turn_off_led_red();
                     }
@@ -680,56 +663,131 @@ void loop() {
                 Serial.println("STATE changed to WALKING");
 //                delay(5000);
 
-            } else if (mouse_state==STATE_MOUSE_AVOIDING_COLISION){
-                Serial.println("STATE_MOUSE_AVOIDING_COLISION");
+            } else if (mouse_state == STATE_MOUSE_AVOIDING_COLISION){
+                colid++;
+                if(colid>=200){
+                    colid=0;
+                    kill_motors();
+                    stepper_left.moveTo(PERIMETER_ROBOT_PERIMETER/2*STEPS_MM);  // 264mm(perimeter wheel) Straight [ /2 => 90º ]
+                    stepper_right.moveTo(-PERIMETER_ROBOT_PERIMETER/2*STEPS_MM);  // 264mm(perimeter wheel) Straight [ /2 => 90º ]
+                    while (mouse_state != STATE_MOUSE_ABORTED and (stepper_left.currentPosition() < (PERIMETER_ROBOT_PERIMETER/2*STEPS_MM) or stepper_left.currentPosition() > (-PERIMETER_ROBOT_PERIMETER/2*STEPS_MM))){
+                        stepper_left.run();
+                        stepper_right.run();
+                    }
+                    mouse_state = STATE_MOUSE_WALKING;
+                }
+//                Serial.println("STATE_MOUSE_AVOIDING_COLISION");
+//                Serial.println("S_A_C");
 //                updatePosition();
-                if ( (distance_left + distance_frontL) > (distance_right + distance_frontR) ){
-                    stepper_left.move(5*STEPS_MM);  // 264mm(perimeter wheel) Straight
-                    stepper_right.move(-5*STEPS_MM);  // 264mm(perimeter wheel) Straight
-                }else{
+//                Serial.print("L FL FR R : ");
+                Serial.print(distance_left); Serial.print("\t");
+                Serial.print(distance_frontL); Serial.print("\t");
+                Serial.print(distance_frontR); Serial.print("\t");
+                Serial.print(distance_right); Serial.print(" | ");
+                Serial.print(stepper_left.currentPosition());
+                Serial.print("\t");
+                Serial.print(stepper_right.currentPosition());
+                Serial.print("\t");
+                Serial.print(stepper_left.targetPosition());
+                Serial.print("\t");
+                Serial.println(stepper_right.targetPosition());
+
+                Serial.print("STATE  ");
+                // (1 | 1 )& 0 & 0 : Dir Fast
+                if ( (distance_right > 0 or distance_frontR > 0) and distance_left == 0 and distance_frontL == 0 ){
+                    stepper_left.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 0 & 0 & (1 | 1 ) : Esq Fast
+                } else if ( distance_right == 0 and distance_frontR == 0 and (distance_left > 0 or distance_frontL > 0 )){
+                    stepper_left.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straigh
+                // 1 & 1 & 1 & 1 : Rotate Esq fast
+                } else if ( distance_right > 0 and distance_frontR > 0 and distance_left > 0 and distance_frontL > 0 ) {
+                    stepper_left.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 1 & 0 & 0 & 0 : Dir slow
+                } else if ( distance_right > 0 and distance_frontR == 0 and distance_left == 0 and distance_frontL == 0 ) {
                     stepper_left.move(-5*STEPS_MM);  // 264mm(perimeter wheel) Straight
                     stepper_right.move(5*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 0 & 0 & 0 & 1 : Esq slow
+                }else if ( distance_right == 0 and distance_frontR == 0 and distance_left == 0 and distance_frontL > 0 ) {
+                    stepper_left.move(5*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-5*STEPS_MM);  // 264mm(perimeter wheel) Straight
+
+                // 0 & 1 & 1 & 0 : Esq fast
+                }else if ( distance_right == 0 and distance_frontR > 0 and distance_left > 0 and distance_frontL == 0 ) {
+                    stepper_left.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 0 & 1 & 1 & 1 : Esq fast
+                }else if ( distance_right == 0 and distance_frontR > 0 and distance_left > 0 and distance_frontL > 0 ) {
+                    stepper_left.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 1 & 1 & 1 & 0 : Dir fast
+                }else if ( distance_right > 0 and distance_frontR > 0 and distance_left > 0 and distance_frontL == 0 ) {
+                    stepper_left.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                // 1 & 0 & 0 & 1 : Rot Esq fast
+                }else if ( distance_right > 0 and distance_frontR == 0 and distance_left == 0 and distance_frontL > 0 ) {
+                    stepper_left.move(10*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                    stepper_right.move(-10*STEPS_MM);  // 264mm(perimeter wheel) Straight
                 }
-                if (!(
-                        (distance_left!=0 and distance_left<100) or
-                        (distance_right!=0 and distance_right<100) or
-                        (distance_frontL!=0 and distance_frontL<100) or
-                        (distance_frontR!=0 and distance_frontR<100)
-                )){
-//                    noInterrupts();
-                    if (mouse_state!=STATE_MOUSE_ABORTED) {
-                        mouse_state = STATE_MOUSE_WALKING;
-                    }
-//                    interrupts();
+                else{
+                    mouse_state = STATE_MOUSE_WALKING;
+                    Serial.println("WALKING");
                 }
-            } if (mouse_state==STATE_MOUSE_TIMEOUT){
+//                if (distance_frontL > 0 and distance_frontR > 0 and distance_left == 0 and distance_right == 0 ){
+//                    stepper_left.move(-50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                    stepper_right.move(50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+////                    delay_with_run(100);
+//
+//                }
+// else if ( (distance_left + distance_frontL) > (distance_right + distance_frontR) ){
+////                    stepper_left.setCurrentPosition(0);
+////                    stepper_right.setCurrentPosition(0);
+//                    stepper_left.move(50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                    stepper_right.move(-50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                }else{
+////                    stepper_left.setCurrentPosition(0);
+////                    stepper_right.setCurrentPosition(0);
+//                    stepper_left.move(-50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                    stepper_right.move(50*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                }
+//                if (!(
+//                        (distance_left!=0 and distance_left<150) or
+//                        (distance_right!=0 and distance_right<150) or
+//                        (distance_frontL!=0 and distance_frontL<150) or
+//                        (distance_frontR!=0 and distance_frontR<150)
+//                )){
+////                    noInterrupts();
+//                    if (mouse_state!=STATE_MOUSE_ABORTED) {
+//                        mouse_state = STATE_MOUSE_WALKING;
+//                    }
+////                    interrupts();
+//                }
+            } else if (mouse_state==STATE_MOUSE_TIMEOUT){
                 // TODO: Por led a piscar?
                 Serial.println("STATE_MOUSE_TIMEOUT");
-
-                mouse_state==STATE_MOUSE_ALL_DONE;
-
+                colid = 0;
+                while(mouse_state != STATE_MOUSE_ABORTED){
+                    turn_on_led_red();
+                    delay(1000);
+                    turn_off_led_red();
+                    delay(1000);
+                }
             }else{ // WALKING AROUND
-//                servo_rotate();
-                //FM
-//                Serial.print("distanceToGo:    "); Serial.println(stepper_left.distanceToGo());
-//                Serial.print("move:            "); Serial.println(66*STEPS_MM);
-//                Serial.print("currentposition: "); Serial.println(stepper_left.currentPosition());
-//                updatePosition();
-                stepper_left.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
-                stepper_right.move(66*STEPS_MM);  // 264mm(perimeter wheel) Straight
+//                Serial.println("WALKING");
+                colid = 0;
+                Serial.println("WLK");
+                stepper_left.move(15*STEPS_MM);  // 264mm(perimeter wheel) Straight
+                stepper_right.move(15*STEPS_MM);  // 264mm(perimeter wheel) Straight
             }
-//            turn_on_beacon();
-
         }//IF MILLIS()
 
 
 
         // TASK 2
-        currentMillis = millis();
-        if ((currentMillis - time_start) >= TIMEOUT) {
-            Serial.print("TIMEOUT!!!");
+        if ((millis() - time_start) >= TIMEOUT) {
             mouse_state = STATE_MOUSE_TIMEOUT;
-            delay(5000);
         }//IF MILLIS()
 
 
@@ -746,7 +804,7 @@ void loop() {
             Serial.print("Terminei... A espera de START para rerecomeçar...");
             Serial.print(" PIN_START="); Serial.print(digitalRead(PIN_START));
             Serial.print("; PIN_STOP="); Serial.print(digitalRead(PIN_STOP)); Serial.print(";");
-            Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
+            Serial.print("\n"); Serial.print("\n"); Serial.print("\n");
         #endif
 //        noInterrupts();
         if (mouse_state!=STATE_MOUSE_ABORTED) {
@@ -761,12 +819,14 @@ void loop() {
         #ifdef DEBUG_HC
             Serial.print("ABORTED! PIN_START="); Serial.print(digitalRead(PIN_START));
             Serial.print("; PIN_STOP="); Serial.print(digitalRead(PIN_STOP)); Serial.print(";");
-            Serial.print('\n'); Serial.print('\n'); Serial.print('\n');
+            Serial.print("\n"); Serial.print("\n"); Serial.print("\n");
         #endif
 //        noInterrupts();
         if (mouse_state!=STATE_MOUSE_ABORTED) {
             mouse_state = STATE_MOUSE_WAITTING_TO_START;
         }
+        mouse_state = STATE_MOUSE_WAITTING_TO_START;
+        journey_state = STATE_JOURNEY_GOING_TO_CHEESE;
 //        interrupts();
         turn_off_led_red();
         turn_off_servo();
