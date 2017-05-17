@@ -354,6 +354,25 @@ bool read_beacon(){
         return false;
 }
 
+//840us(HIGH) 1400us(Total) 560us(LOW)
+//without delay.
+//beacon should be powered earlear between  10 and 20ms
+bool read_beacon2(){
+    byte sum=0;
+    turn_on_beacon(); // Liga-se e volta-se a desligar, porque se tiver sempre ligado, ele fica tolo.
+    ///delay(20);  // Time to stabilization power suply // TODO: Colocar aqui um link para a foto do osciloscopio
+    for(int i=0; i<14; i++){
+        sum += digitalRead(PIN_BEACON);
+        delayMicroseconds(100);
+    }
+    turn_off_beacon();
+    //delay(20);
+    if(sum > 12)
+        return true; //Signal is allways high
+    else
+        return false;
+}
+
 // BEACON SENSOR ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -583,10 +602,14 @@ void loop() {
     byte Servo_State = SERVO_CW;
     turn_on_servo();
     set_servo_degree(0);
-    while( mouse_state != STATE_MOUSE_ABORTED){    
+    while( mouse_state != STATE_MOUSE_ABORTED){  
+      /// TASK 1  
       currentMillis = millis();
-      if (currentMillis - previousMillis >= 100) {
+      if (currentMillis - previousMillis >= 50) {
           previousMillis = currentMillis;
+
+          ///Power beacon
+          turn_on_beacon(); //Will need to wait for power up
           
           if(Servo_State == SERVO_CCW){
             if(servo_pos >10){
@@ -604,6 +627,14 @@ void loop() {
           }//END IF
           Serial.print("servo pos "); Serial.println(servo_pos);
           set_servo_degree(servo_pos);
+          /// TASK 2: Read beacon
+          currentMillis = millis();
+          if (currentMillis - previousMillis >= 25) {
+              previousMillis = currentMillis;
+
+              read_beacon2();
+          }
+          ///END TASK 2
       }//END IF
     
     }//END WHILE
