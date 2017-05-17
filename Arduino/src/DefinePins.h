@@ -13,6 +13,7 @@
     #define PIN_LED_RED 13
     #define PIN_BEACON_EN1 14  //Sensor ON/Off
     #define PIN_BEACON_EN2 15  //Sensor ON/Off
+    #define PIN_DEBUG 21  //PIN DE DEBUG
 
     #define PIN_TRIG_LEFT   A0  // Sensor de distancia LEFT
     #define PIN_ECHO_LEFT   A1  // Sensor de distancia LEFT
